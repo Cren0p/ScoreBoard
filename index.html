@@ -83,7 +83,7 @@ body.ovm #app{background:transparent;}
 .ov-card-av{width:36px;height:36px;border-radius:3px;object-fit:cover;flex-shrink:0;}
 .ov-card-info{flex:1;min-width:0;}
 .ov-card-name{font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;}
-.ov-card-score{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#fff;}
+.ov-card-score{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#fff;white-space:nowrap;overflow:hidden;}
 .ov-empty{opacity:.25;}
 </style>
 </head>
@@ -227,8 +227,22 @@ function renderOverlay() {
     </div>`;
   }).join('');
 
-  app.innerHTML = `<div class="ov-stage"><div class="ov-grid${state.textDark ? ' dark' : ''}" style="grid-template-columns:repeat(${cols},184px);">${cells}</div></div>`;
+  app.innerHTML = `<div class="ov-stage"><div class="ov-grid${state.textDark ? ' dark' : ''}" style="grid-template-columns:repeat(${cols},150px);">${cells}</div></div>`;
+  fitCardText();
   fitOverlay();
+}
+
+// 이름·점수가 칸을 넘치면 그 텍스트만 폰트 축소 (기준의 60%까지, 한 줄 유지)
+function fitCardText() {
+  document.querySelectorAll('.ov-card-name, .ov-card-score').forEach(el => {
+    el.style.fontSize = '';
+    const base = parseFloat(getComputedStyle(el).fontSize);
+    let size = base;
+    while (el.scrollWidth > el.clientWidth && size > base * 0.6) {
+      size -= 0.5;
+      el.style.fontSize = size + 'px';
+    }
+  });
 }
 
 function fitOverlay() {
