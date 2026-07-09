@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>천타버스 스코어보드</title>
+<link rel="icon" type="image/webp" href="https://github.com/Cren0p/ScoreBoard/blob/main/Favicon.webp?raw=true">
+<style>
+:root {
+  --bg:#080810; --surface:#0f0f1a; --card:#141428;
+  --border:#1e1e34; --text:#e4e4f4; --muted:#52527a;
+  --font:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  --accent:#00C9A7;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);}
+
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;color:var(--muted);}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.wrap{max-width:1260px;margin:0 auto;padding:28px 20px 60px;}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:10px;}
+.page-title{font-size:1.5rem;font-weight:800;}
+.page-title span{background:linear-gradient(135deg,#00C9A7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.badge{font-size:.7rem;background:var(--border);color:var(--muted);padding:4px 11px;border-radius:20px;}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:#2ED573;display:inline-block;margin-right:5px;}
+
+.pnav.active{background:var(--card);color:var(--text);}
+.pnav.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#00C9A7,#7C3AED);}
+
+
+/* 멤버 선택 그리드 */
+.msel.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,201,167,.2);}
+.msel.on .msel-img{border-color:var(--accent);}
+.msel.on .msel-name{color:var(--text);}
+
+
+.btn{padding:8px 18px;border:none;cursor:pointer;font-family:var(--font);font-weight:700;font-size:.82rem;transition:all .18s;}
+.btn-ghost{background:var(--card);border:1px solid var(--border);color:var(--text);}
+.btn-ghost:hover{border-color:var(--muted);}
+.btn-sm{padding:5px 12px;font-size:.75rem;}
+
+/* 게임 화면 */
+
+/* 점수판 테이블 */
+.score-table-wrap{overflow-x:auto;margin-bottom:24px;}
+.score-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);}
+.score-table th,.score-table td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;font-size:.82rem;white-space:nowrap;}
+.score-table th{background:var(--card);font-weight:800;color:var(--muted);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;}
+.score-table tr:last-child td{border-bottom:none;}
+.score-table .td-name{text-align:left;display:flex;align-items:center;gap:8px;}
+.score-table .td-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;}
+.score-table .td-total{font-weight:800;color:var(--accent);font-size:.9rem;}
+.score-table .td-rank{font-weight:900;width:24px;}
+.pr1{color:#FFD700;} .pr2{color:#B8B8B8;} .pr3{color:#CD7F32;}
+.score-table input.round-inp{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:3px 6px;font-size:.78rem;font-family:var(--font);width:64px;text-align:right;-moz-appearance:textfield;}
+.score-table input.round-inp::-webkit-inner-spin-button,.score-table input.round-inp::-webkit-outer-spin-button{-webkit-appearance:none;}
+.score-table input.round-inp:focus{outline:none;border-color:var(--accent);}
+.score-table .td-inp{display:flex;align-items:center;gap:3px;justify-content:center;}
+.score-table .apbtn{padding:3px 7px;border:none;cursor:pointer;font-weight:800;font-size:.72rem;font-family:var(--font);transition:all .15s;}
+
+
+/* OV BOX */
+
+/* 모달 */
+
+/* 오버레이 */
+body.ovm{background:transparent !important;}
+body.ovm #app{background:transparent;}
+.ov-stage{width:100%;height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
+.ov-grid{display:grid;gap:8px;width:max-content;transform-origin:center;}
+.ov-card{background:transparent;padding:8px 10px;display:flex;align-items:center;gap:8px;}
+.ov-card-rank{width:28px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;font-weight:900;flex-shrink:0;}
+.ovr1{color:#FFD700;} .ovr2{color:#C0C0C0;} .ovr3{color:#CD7F32;}
+.ovr-etc{color:#fff;}
+.ov-grid.dark .ovr-etc{color:#111;}
+.ov-grid.dark .ov-card-score{color:#111;}
+.ov-grid.dark .ov-name-outline{text-shadow:-.5px -.5px 0 #000,.5px -.5px 0 #000,-.5px .5px 0 #000,.5px .5px 0 #000,0 -.5px 0 #000,0 .5px 0 #000,-.5px 0 0 #000,.5px 0 0 #000;}
+.ov-card-av{width:36px;height:36px;border-radius:3px;object-fit:cover;flex-shrink:0;}
+.ov-card-info{flex:1;min-width:0;}
+.ov-card-name{font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;}
+.ov-card-score{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#fff;}
+.ov-empty{opacity:.25;}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading"><div class="spinner"></div><div id="loadMsg">Firebase SDK 로딩 중...</div></div></div>
+
+<script>
+window.addEventListener('load', function() {
+  const msg = document.getElementById('loadMsg');
+  if (!msg) return;
+  if (typeof firebase === 'undefined') {
+    msg.innerHTML = '❌ Firebase SDK 로드 실패';
+    return;
+  }
+  msg.textContent = 'Firebase 초기화 중...';
+});
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAJmePUKepIjsrSLoqLKO9EjhipdnnheaY",
+  authDomain: "lifegame-26c6c.firebaseapp.com",
+  databaseURL: "https://lifegame-26c6c-default-rtdb.firebaseio.com",
+  projectId: "lifegame-26c6c",
+  storageBucket: "lifegame-26c6c.firebasestorage.app",
+  messagingSenderId: "723913370465",
+  appId: "1:723913370465:web:999650fa0d05a9ad39f320"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const STATE_REF = db.ref('chameleon/state');
+
+// 모든 데이터(참여자·점수·색·설정)는 구글 시트에서 입력하고,
+// 시트에 설치된 Apps Script가 편집 즉시 Firebase로 밀어넣는다.
+// 이 페이지는 표시 전용: 기본 = 현황, ?overlay = OBS 오버레이.
+const isOv = location.search.indexOf('overlay') !== -1;
+if (isOv) {
+  document.body.classList.add('ovm');
+  document.getElementById('app').innerHTML = '';
+}
+
+let state = null;
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function soopImg(id) { return `https://profile.img.sooplive.com/LOGO/${id.slice(0,2)}/${id}/${id}.jpg`; }
+
+// D열 셀 텍스트("12,500원", "$300", "85%")에서 정렬용 숫자 추출
+function scoreNum(t) {
+  const n = parseFloat(String(t).replace(/,/g, '').replace(/[^0-9.\-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function sanitize(raw) {
+  const s = raw && typeof raw === 'object' ? raw : {};
+  let rows = Array.isArray(s.rows) ? s.rows : Object.values(s.rows || {});
+  rows = rows.filter(r => r && typeof r === 'object').map(r => ({
+    id: String(r.id || ''),
+    nick: String(r.nick || r.id || ''),
+    color: (typeof r.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(r.color)) ? r.color : '',
+    score: String(r.score === undefined || r.score === null || r.score === '' ? '0' : r.score),
+  }));
+  return {
+    rows,
+    textDark: s.textDark === true,
+    cols: (typeof s.cols === 'number' && s.cols >= 1 && s.cols <= 12) ? s.cols : 0,
+  };
+}
+
+// 동점 공동 순위 (숫자 기준 내림차순)
+function ranked() {
+  const arr = state.rows.map(r => ({ ...r, num: scoreNum(r.score) })).sort((a, b) => b.num - a.num);
+  arr.forEach((p, i) => {
+    p.rank = (i > 0 && p.num === arr[i - 1].num) ? arr[i - 1].rank : i + 1;
+  });
+  return arr;
+}
+
+// ── 현황 페이지 (읽기 전용) ──────────────────────────────────────
+let connected = false;
+let everConnected = false;
+
+db.ref('.info/connected').on('value', snap => {
+  connected = snap.val() === true;
+  if (connected) everConnected = true;
+  updateConn();
+});
+
+function updateConn() {
+  const lost = everConnected && !connected;
+  document.querySelectorAll('.conn-dot').forEach(d => { d.style.background = lost ? '#FF4757' : '#2ED573'; });
+  document.querySelectorAll('.conn-txt').forEach(t => { t.textContent = lost ? '연결 끊김' : 'Firebase 연결됨'; });
+}
+
+function renderStatus() {
+  const arr = ranked();
+  const rows = arr.map(p => `<tr>
+    <td style="text-align:center;font-weight:900;">${p.rank}</td>
+    <td><div class="td-name">
+      <img class="td-avatar" src="${soopImg(p.id)}" alt="${esc(p.nick)}" onerror="this.style.opacity=0">
+      ${esc(p.nick)}
+    </div></td>
+    <td class="td-total">${esc(p.score)}</td>
+  </tr>`).join('');
+
+  document.getElementById('app').innerHTML = `<div class="wrap">
+    <div class="page-header">
+      <div class="page-title"><img src="https://github.com/Cren0p/ScoreBoard/blob/main/Favicon.webp?raw=true" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:6px;"><span>천타버스</span> 스코어보드</div>
+      <span class="badge"><span class="conn-dot"></span><span class="conn-txt">Firebase 연결됨</span></span>
+    </div>
+    <div class="score-table-wrap"><table class="score-table">
+      <thead><tr><th style="width:64px;">순위</th><th>멤버</th><th style="text-align:right;">점수</th></tr></thead>
+      <tbody>${rows.length ? rows : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px;">시트에 등록된 멤버가 없습니다</td></tr>'}</tbody>
+    </table></div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:12px;">참여자·점수·이름색·오버레이 설정은 모두 구글 시트에서 조정합니다. 이 페이지는 현황 표시 전용입니다.</div>
+  </div>`;
+  updateConn();
+}
+
+// ── OBS 오버레이 ─────────────────────────────────────────────────
+function renderOverlay() {
+  const app = document.getElementById('app');
+  if (!state || state.rows.length === 0) { app.innerHTML = ''; return; }
+
+  const arr = ranked();
+  const cols = Math.min(state.cols > 0 ? state.cols : 4, arr.length);
+  const cells = arr.map(p => {
+    const rank = p.rank;
+    const rankCls = rank === 1 ? 'ovr1' : rank === 2 ? 'ovr2' : rank === 3 ? 'ovr3' : 'ovr-etc';
+    const nameColor = p.color || (state.textDark ? '#111' : '#fff');
+    const outlineCls = nameColor.toLowerCase() === '#ffffff' || nameColor.toLowerCase() === '#fff' ? ' ov-name-outline' : '';
+    return `<div class="ov-card">
+      <div class="ov-card-rank ${rankCls}">${rank}</div>
+      <img class="ov-card-av" src="${soopImg(p.id)}" alt="${esc(p.nick)}" onerror="this.style.opacity=0">
+      <div class="ov-card-info">
+        <div class="ov-card-name${outlineCls}" style="color:${nameColor}">${esc(p.nick)}</div>
+        <div class="ov-card-score">${esc(p.score)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  app.innerHTML = `<div class="ov-stage"><div class="ov-grid${state.textDark ? ' dark' : ''}" style="grid-template-columns:repeat(${cols},184px);">${cells}</div></div>`;
+  fitOverlay();
+}
+
+function fitOverlay() {
+  const grid = document.querySelector('.ov-grid');
+  if (!grid) return;
+  grid.style.transform = 'none';
+  const w = grid.offsetWidth, h = grid.offsetHeight;
+  if (!w || !h) return;
+  const scale = Math.min((window.innerWidth - 32) / w, (window.innerHeight - 32) / h);
+  grid.style.transform = `scale(${scale})`;
+}
+window.addEventListener('resize', () => { if (isOv) fitOverlay(); });
+
+// ── FIREBASE LISTENER (읽기 전용) ────────────────────────────────
+STATE_REF.on('value', snapshot => {
+  state = sanitize(snapshot.val());
+  if (isOv) renderOverlay(); else renderStatus();
+}, error => {
+  console.error('Firebase error:', error);
+  document.getElementById('app').innerHTML =
+    '<div class="loading"><div style="color:#FF4757">Firebase 연결 실패</div><div style="font-size:.8rem;color:var(--muted)">' + error.message + '</div></div>';
+});
+</script>
+</body>
+</html>
