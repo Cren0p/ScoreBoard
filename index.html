@@ -80,6 +80,8 @@ body.ovm #app{background:transparent;}
 .ov-grid.dark .ov-card-score{color:#111;}
 .ov-tcard{background:transparent;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;}
 .ov-tcard-head{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 8px;}
+.ov-tcard.h-left .ov-tcard-head{align-self:flex-start;}
+.ov-tcard.h-right .ov-tcard-head{align-self:flex-end;}
 .ov-tcard-head.wide{flex-direction:row;gap:8px;}
 .ov-tcard-scores{display:flex;align-items:center;justify-content:center;gap:6px;}
 .top{outline:2px solid #FFD700;outline-offset:-2px;background:rgba(255,215,0,.16);}
@@ -181,6 +183,7 @@ function sanitize(raw) {
     cols: (typeof s.cols === 'number' && s.cols >= 1 && s.cols <= 12) ? s.cols : 0,
     showRank: s.showRank !== false,
     topN: (typeof s.topN === 'number' && s.topN >= 0 && s.topN <= 12) ? s.topN : 1,
+    headAlign: ['left', 'center', 'right'].indexOf(s.headAlign) !== -1 ? s.headAlign : 'center',
     overlayOn: s.overlayOn !== false,
     teamCols: (typeof s.teamCols === 'number' && s.teamCols >= 1 && s.teamCols <= 12) ? s.teamCols : 0,
     caption: typeof s.caption === 'string' ? s.caption : '',
@@ -364,7 +367,8 @@ function renderTeamOverlay(app) {
         </div>
       </div>`;
     }).join('');
-    return `<div class="ov-tcard">
+    const hCls = state.headAlign === 'left' ? ' h-left' : state.headAlign === 'right' ? ' h-right' : '';
+    return `<div class="ov-tcard${hCls}">
       <div class="ov-tcard-head${top ? ' top' : ''}">
         <div class="ov-tcard-name">${esc(t.name)}</div>
         ${(t.round || showTotal) ? `<div class="ov-tcard-scores">
