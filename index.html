@@ -74,7 +74,18 @@ body.ovm #app{background:transparent;}
 .ov-grid.dark .ovr-etc{color:#111;}
 .ov-grid.dark .ov-card-score{color:#111;}
 .ov-grid.dark .ov-card{background:rgba(255,255,255,.55);}
-.ov-grid.dark .ov-name-outline{text-shadow:-.5px -.5px 0 #000,.5px -.5px 0 #000,-.5px .5px 0 #000,.5px .5px 0 #000,0 -.5px 0 #000,0 .5px 0 #000,-.5px 0 0 #000,.5px 0 0 #000;}
+.ov-tcard{background:rgba(0,0,0,.45);padding:5px 8px;display:flex;flex-direction:column;gap:3px;}
+.ov-grid.dark .ov-tcard{background:rgba(255,255,255,.55);}
+.ov-tcard-head{display:flex;align-items:center;gap:6px;}
+.ov-tcard-name{font-size:.95rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;max-width:130px;}
+.ov-grid.dark .ov-tcard-name{color:#111;}
+.ov-tcard-total{font-size:1.05rem;font-weight:900;color:#fff;margin-left:auto;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;}
+.ov-grid.dark .ov-tcard-total{color:#111;}
+.ov-tm{display:flex;align-items:center;gap:6px;}
+.ov-tm-av{width:24px;height:24px;object-fit:cover;flex-shrink:0;}
+.ov-tm-name{font-size:.8rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;max-width:100px;}
+.ov-tm-score{font-size:.8rem;font-weight:700;color:#fff;margin-left:auto;white-space:nowrap;overflow:hidden;max-width:90px;font-variant-numeric:tabular-nums;}
+.ov-grid.dark .ov-tm-score{color:#111;}
 .ov-card-av{width:36px;height:36px;border-radius:3px;object-fit:cover;flex-shrink:0;}
 .ov-card-info{min-width:0;}
 .ov-card-name{font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;max-width:110px;}
@@ -142,6 +153,7 @@ function sanitize(raw) {
     nick: String(r.nick || r.id || ''),
     color: (typeof r.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(r.color)) ? r.color : '',
     score: String(r.score === undefined || r.score === null || r.score === '' ? '0' : r.score),
+    team: typeof r.team === 'string' ? r.team.trim() : '',
   }));
   return {
     rows,
@@ -151,6 +163,32 @@ function sanitize(raw) {
     overlayOn: s.overlayOn !== false,
     updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : 0,
   };
+}
+
+// I열에 팀명이 하나라도 있으면 팀전 모드
+function isTeamMode() {
+  return state.rows.some(r => r.team);
+}
+
+// 팀전: 팀명 빈 행은 미참가. 시트 등장 순서로 묶고, 순위 표시 시 합계 내림차순 + 공동 순위
+function rankedTeams() {
+  const teams = [];
+  const byName = {};
+  state.rows.forEach(r => {
+    if (!r.team) return;
+    if (!byName[r.team]) {
+      byName[r.team] = { name: r.team, members: [], total: 0 };
+      teams.push(byName[r.team]);
+    }
+    byName[r.team].members.push(r);
+    byName[r.team].total += scoreNum(r.score);
+  });
+  if (!state.showRank) return teams;
+  teams.sort((a, b) => b.total - a.total);
+  teams.forEach((t, i) => {
+    t.rank = (i > 0 && t.total === teams[i - 1].total) ? teams[i - 1].rank : i + 1;
+  });
+  return teams;
 }
 
 // 순위 표시: 점수 내림차순 + 동점 공동 순위 / 순위 숨김: 시트 행 순서 그대로
@@ -181,8 +219,10 @@ function updateConn() {
 
 function renderStatus() {
   const arr = ranked();
+  const teamMode = isTeamMode();
   const rows = arr.map(p => `<tr>
     ${state.showRank ? `<td style="text-align:center;font-weight:900;">${p.rank}</td>` : ''}
+    ${teamMode ? `<td>${esc(p.team || '—')}</td>` : ''}
     <td><div class="td-name">
       <img class="td-avatar" src="${soopImg(p.id)}" alt="${esc(p.nick)}" onerror="this.style.opacity=0">
       ${esc(p.nick)}
@@ -201,8 +241,8 @@ function renderStatus() {
       </div>
     </div>
     <div class="score-table-wrap"><table class="score-table">
-      <thead><tr>${state.showRank ? '<th style="width:64px;">순위</th>' : ''}<th>멤버</th><th>점수</th></tr></thead>
-      <tbody>${rows.length ? rows : `<tr><td colspan="${state.showRank ? 3 : 2}" style="text-align:center;color:var(--muted);padding:24px;">시트에 등록된 멤버가 없습니다</td></tr>`}</tbody>
+      <thead><tr>${state.showRank ? '<th style="width:64px;">순위</th>' : ''}${teamMode ? '<th>팀</th>' : ''}<th>멤버</th><th>점수</th></tr></thead>
+      <tbody>${rows.length ? rows : `<tr><td colspan="${(state.showRank ? 3 : 2) + (teamMode ? 1 : 0)}" style="text-align:center;color:var(--muted);padding:24px;">시트에 등록된 멤버가 없습니다</td></tr>`}</tbody>
     </table></div>
   </div>`;
   updateConn();
@@ -239,20 +279,51 @@ function renderOverlay() {
   const app = document.getElementById('app');
   if (!state || !state.overlayOn || state.rows.length === 0) { app.innerHTML = ''; return; }
 
+  if (isTeamMode()) { renderTeamOverlay(app); return; }
+
   const arr = ranked();
   const cols = Math.min(state.cols > 0 ? state.cols : 4, arr.length);
   const cells = arr.map(p => {
     const rank = p.rank;
     const rankCls = rank === 1 ? 'ovr1' : rank === 2 ? 'ovr2' : rank === 3 ? 'ovr3' : 'ovr-etc';
     const nameColor = p.color || (state.textDark ? '#111' : '#fff');
-    const outlineCls = nameColor.toLowerCase() === '#ffffff' || nameColor.toLowerCase() === '#fff' ? ' ov-name-outline' : '';
     return `<div class="ov-card">
       ${state.showRank ? `<div class="ov-card-rank ${rankCls}">${rank}</div>` : ''}
       <img class="ov-card-av" src="${soopImg(p.id)}" alt="${esc(p.nick)}" onerror="this.style.opacity=0">
       <div class="ov-card-info">
-        <div class="ov-card-name${outlineCls}" style="color:${nameColor}">${esc(p.nick)}</div>
+        <div class="ov-card-name" style="color:${nameColor}">${esc(p.nick)}</div>
         <div class="ov-card-score">${esc(p.score)}</div>
       </div>
+    </div>`;
+  }).join('');
+
+  app.innerHTML = `<div class="ov-stage"><div class="ov-grid${state.textDark ? ' dark' : ''}" style="grid-template-columns:repeat(${cols},max-content);">${cells}</div></div>`;
+  fitCardText();
+  fitOverlay();
+}
+
+function renderTeamOverlay(app) {
+  const teams = rankedTeams();
+  if (teams.length === 0) { app.innerHTML = ''; return; }
+
+  const cols = Math.min(state.cols > 0 ? state.cols : 4, teams.length);
+  const cells = teams.map(t => {
+    const rankCls = t.rank === 1 ? 'ovr1' : t.rank === 2 ? 'ovr2' : t.rank === 3 ? 'ovr3' : 'ovr-etc';
+    const members = t.members.map(m => {
+      const nameColor = m.color || (state.textDark ? '#111' : '#fff');
+      return `<div class="ov-tm">
+        <img class="ov-tm-av" src="${soopImg(m.id)}" alt="${esc(m.nick)}" onerror="this.style.opacity=0">
+        <span class="ov-tm-name" style="color:${nameColor}">${esc(m.nick)}</span>
+        <span class="ov-tm-score">${esc(m.score)}</span>
+      </div>`;
+    }).join('');
+    return `<div class="ov-tcard">
+      <div class="ov-tcard-head">
+        ${state.showRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}</div>` : ''}
+        <div class="ov-tcard-name">${esc(t.name)}</div>
+        <div class="ov-tcard-total">${t.total.toLocaleString('en-US')}</div>
+      </div>
+      ${members}
     </div>`;
   }).join('');
 
@@ -264,13 +335,13 @@ function renderOverlay() {
 // 칸을 넘치는 텍스트만 폰트 축소 (한 줄 유지, 한 번에 비율 계산)
 // 이름: 기준의 60%까지(그 이하는 말줄임) / 점수: 잘림 방지를 위해 들어맞을 때까지(절대 하한 8px)
 function fitCardText() {
-  document.querySelectorAll('.ov-card-name, .ov-card-score').forEach(el => {
+  document.querySelectorAll('.ov-card-name, .ov-card-score, .ov-tcard-name, .ov-tcard-total, .ov-tm-name, .ov-tm-score').forEach(el => {
     el.style.fontSize = '';
     if (el.scrollWidth <= el.clientWidth) return;
     const base = parseFloat(getComputedStyle(el).fontSize);
     const fit = base * el.clientWidth / el.scrollWidth * 0.97;
-    const min = el.classList.contains('ov-card-score') ? 8 : base * 0.6;
-    el.style.fontSize = Math.max(fit, min) + 'px';
+    const isScore = el.classList.contains('ov-card-score') || el.classList.contains('ov-tcard-total') || el.classList.contains('ov-tm-score');
+    el.style.fontSize = Math.max(fit, isScore ? 8 : base * 0.6) + 'px';
   });
 }
 
