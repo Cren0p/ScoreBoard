@@ -56,7 +56,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .score-table .td-name{display:flex;align-items:center;justify-content:center;gap:8px;}
 .score-table .td-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;}
 .score-table .td-total{font-weight:800;color:var(--accent);font-size:.9rem;}
-.pr1{color:#FFD700;} .pr2{color:#B8B8B8;} .pr3{color:#CD7F32;}
 
 
 /* OV BOX */
@@ -67,37 +66,39 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 body.ovm{background:transparent !important;}
 body.ovm #app{background:transparent;}
 .ov-stage{width:100%;height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
-.ov-panel{display:flex;flex-direction:column;align-items:center;gap:8px;background:rgba(0,0,0,.5);padding:14px 18px;width:max-content;transform-origin:center;}
+.ov-panel{display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(0,0,0,.5);padding:10px 14px;width:max-content;transform-origin:center;}
 .ov-panel.dark{background:rgba(255,255,255,.6);}
 .ov-panel.cap-left{flex-direction:row;gap:16px;}
 .ov-panel.cap-right{flex-direction:row-reverse;gap:16px;}
 .ov-panel.cap-bottom{flex-direction:column-reverse;}
-.ov-caption{font-size:1.15rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-align:center;}
+.ov-caption{font-size:1.15rem;font-weight:800;color:#fff;white-space:pre-line;text-align:center;}
 .ov-panel.dark .ov-caption{color:#111;}
-.ov-grid{display:grid;gap:3px 14px;width:max-content;}
-.ov-grid.teams{gap:10px 28px;}
+.ov-grid{display:grid;gap:2px 10px;width:max-content;}
+.ov-grid.teams{gap:6px 20px;}
 .ov-tcard-members{display:grid;gap:2px 14px;}
-.ov-card{background:transparent;padding:3px 6px;display:flex;align-items:center;gap:6px;}
+.ov-card{background:transparent;padding:2px 4px;display:flex;align-items:center;gap:6px;}
 .ov-card-rank{width:24px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;font-weight:900;flex-shrink:0;}
-.ovr1{color:#FFD700;} .ovr2{color:#C0C0C0;} .ovr3{color:#CD7F32;}
-.ovr-etc{color:#fff;}
-.ov-grid.dark .ovr-etc{color:#111;}
+.ovr1{color:#FFD700;}
+.ovr2,.ovr3,.ovr-etc{color:rgba(255,255,255,.6);}
+.ov-panel.dark .ovr1{color:#B8860B;}
+.ov-panel.dark .ovr2,.ov-panel.dark .ovr3,.ov-panel.dark .ovr-etc{color:rgba(0,0,0,.55);}
 .ov-grid.dark .ov-card-score{color:#111;}
-.ov-tcard{background:transparent;padding:5px 8px;display:flex;flex-direction:column;gap:3px;}
+.ov-tcard{background:transparent;padding:2px 4px;display:flex;flex-direction:column;gap:2px;}
 .ov-tcard-head{display:flex;align-items:center;gap:6px;}
+.ov-tcard-head .ov-card-rank{font-size:1.25rem;}
 .ov-tcard-name{font-size:.95rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;max-width:130px;}
 .ov-grid.dark .ov-tcard-name{color:#111;}
-.ov-tcard-total{font-size:1.05rem;font-weight:900;color:#fff;margin-left:auto;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;}
+.ov-tcard-total{font-size:1.3rem;font-weight:900;color:#fff;margin-left:auto;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;}
 .ov-grid.dark .ov-tcard-total{color:#111;}
 .ov-tm{display:flex;align-items:center;gap:6px;}
 .ov-tm-av{width:24px;height:24px;object-fit:cover;flex-shrink:0;}
 .ov-tm-name{font-size:.8rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;max-width:100px;}
-.ov-tm-score{font-size:.8rem;font-weight:700;color:#fff;margin-left:auto;white-space:nowrap;overflow:hidden;max-width:90px;font-variant-numeric:tabular-nums;}
+.ov-tm-score{font-size:.8rem;font-weight:700;color:#fff;opacity:.75;margin-left:auto;white-space:nowrap;overflow:hidden;max-width:90px;font-variant-numeric:tabular-nums;}
 .ov-grid.dark .ov-tm-score{color:#111;}
 .ov-card-av{width:36px;height:36px;border-radius:3px;object-fit:cover;flex-shrink:0;}
 .ov-card-info{min-width:0;}
 .ov-card-name{font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;max-width:110px;}
-.ov-card-score{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;}
+.ov-card-score{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#fff;opacity:.85;white-space:nowrap;overflow:hidden;max-width:110px;}
 .ov-empty{opacity:.25;}
 </style>
 </head>
@@ -147,6 +148,12 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 
 function soopImg(id) { return `https://profile.img.sooplive.com/LOGO/${id.slice(0,2)}/${id}/${id}.jpg`; }
 
+// D1 단위: 점수가 순수 숫자(콤마·소수점·부호 허용)면 단위를 붙이고, 텍스트 섞인 점수는 그대로
+function dispScore(t) {
+  const s = String(t);
+  return (state.unit && /^-?[0-9][0-9,]*(\.[0-9]+)?$/.test(s.trim())) ? s + state.unit : s;
+}
+
 // D열 셀 텍스트("12,500원", "$300", "85%")에서 정렬용 숫자 추출
 function scoreNum(t) {
   const n = parseFloat(String(t).replace(/,/g, '').replace(/[^0-9.\-]/g, ''));
@@ -171,6 +178,7 @@ function sanitize(raw) {
     overlayOn: s.overlayOn !== false,
     teamCols: (typeof s.teamCols === 'number' && s.teamCols >= 1 && s.teamCols <= 12) ? s.teamCols : 0,
     caption: typeof s.caption === 'string' ? s.caption : '',
+    unit: typeof s.unit === 'string' ? s.unit.trim() : '',
     captionPos: ['top', 'left', 'right', 'bottom'].indexOf(s.captionPos) !== -1 ? s.captionPos : 'top',
     updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : 0,
   };
@@ -195,6 +203,7 @@ function rankedTeams() {
     byName[r.team].total += scoreNum(r.score);
   });
   if (!state.showRank) return teams;
+  teams.forEach(t => t.members.sort((a, b) => scoreNum(b.score) - scoreNum(a.score)));
   teams.sort((a, b) => b.total - a.total);
   teams.forEach((t, i) => {
     t.rank = (i > 0 && t.total === teams[i - 1].total) ? teams[i - 1].rank : i + 1;
@@ -238,7 +247,7 @@ function renderStatus() {
       <img class="td-avatar" src="${soopImg(p.id)}" alt="${esc(p.nick)}" onerror="this.style.opacity=0">
       ${esc(p.nick)}
     </div></td>
-    <td class="td-total">${esc(p.score)}</td>
+    <td class="td-total">${esc(dispScore(p.score))}</td>
   </tr>`).join('');
 
   document.getElementById('app').innerHTML = `<div class="wrap">
@@ -310,7 +319,7 @@ function renderOverlay() {
       <img class="ov-card-av" src="${soopImg(p.id)}" alt="${esc(p.nick)}" onerror="this.style.opacity=0">
       <div class="ov-card-info">
         <div class="ov-card-name" style="color:${nameColor}">${esc(p.nick)}</div>
-        <div class="ov-card-score">${esc(p.score)}</div>
+        <div class="ov-card-score">${esc(dispScore(p.score))}</div>
       </div>
     </div>`;
   }).join('');
@@ -333,14 +342,14 @@ function renderTeamOverlay(app) {
       return `<div class="ov-tm">
         <img class="ov-tm-av" src="${soopImg(m.id)}" alt="${esc(m.nick)}" onerror="this.style.opacity=0">
         <span class="ov-tm-name" style="color:${nameColor}">${esc(m.nick)}</span>
-        <span class="ov-tm-score">${esc(m.score)}</span>
+        <span class="ov-tm-score">${esc(dispScore(m.score))}</span>
       </div>`;
     }).join('');
     return `<div class="ov-tcard">
       <div class="ov-tcard-head">
         ${state.showRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}</div>` : ''}
         <div class="ov-tcard-name">${esc(t.name)}</div>
-        <div class="ov-tcard-total">${t.total.toLocaleString('en-US')}</div>
+        <div class="ov-tcard-total">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>
       </div>
       <div class="ov-tcard-members" style="grid-template-columns:repeat(${memberCols},max-content);">${members}</div>
     </div>`;
@@ -354,7 +363,7 @@ function renderTeamOverlay(app) {
 // 칸을 넘치는 텍스트만 폰트 축소 (한 줄 유지, 한 번에 비율 계산)
 // 이름: 기준의 60%까지(그 이하는 말줄임) / 점수: 잘림 방지를 위해 들어맞을 때까지(절대 하한 8px)
 function fitCardText() {
-  document.querySelectorAll('.ov-card-name, .ov-card-score, .ov-tcard-name, .ov-tcard-total, .ov-tm-name, .ov-tm-score, .ov-caption').forEach(el => {
+  document.querySelectorAll('.ov-card-name, .ov-card-score, .ov-tcard-name, .ov-tcard-total, .ov-tm-name, .ov-tm-score').forEach(el => {
     el.style.fontSize = '';
     if (el.scrollWidth <= el.clientWidth) return;
     const base = parseFloat(getComputedStyle(el).fontSize);
