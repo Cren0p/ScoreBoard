@@ -88,7 +88,10 @@ body.ovm #app{background:transparent;}
 .ov-tcard-head .ov-card-rank{font-size:1.25rem;}
 .ov-tcard-name{font-size:.95rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;max-width:130px;}
 .ov-grid.dark .ov-tcard-name{color:#111;}
+.ov-tcard-round{font-size:1.3rem;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;}
+.ov-panel.dark .ov-tcard-round{color:#111;}
 .ov-tcard-total{font-size:1.3rem;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;}
+.ov-tcard-total.sub{font-size:.85rem;font-weight:700;opacity:.7;}
 .ov-grid.dark .ov-tcard-total{color:#111;}
 .ov-tm{display:flex;align-items:center;gap:6px;}
 .ov-tm-av{width:32px;height:32px;object-fit:cover;flex-shrink:0;}
@@ -170,6 +173,7 @@ function sanitize(raw) {
     color: (typeof r.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(r.color)) ? r.color : '',
     score: String(r.score === undefined || r.score === null || r.score === '' ? '0' : r.score),
     team: typeof r.team === 'string' ? r.team.trim() : '',
+    teamScore: typeof r.teamScore === 'string' ? r.teamScore.trim() : '',
   }));
   return {
     rows,
@@ -202,12 +206,17 @@ function rankedTeams() {
     }
     byName[r.team].members.push(r);
     byName[r.team].total += scoreNum(r.score);
+    if (!byName[r.team].round && r.teamScore) byName[r.team].round = r.teamScore;
   });
   if (!state.showRank) return teams;
   teams.forEach(t => t.members.sort((a, b) => scoreNum(b.score) - scoreNum(a.score)));
-  teams.sort((a, b) => b.total - a.total);
+  // 라운드 점수(J열)가 하나라도 있으면 라운드 우선, 동률이면 합계로 정렬
+  const useRound = teams.some(t => t.round);
+  const key = t => useRound ? scoreNum(t.round || '') : t.total;
+  teams.sort((a, b) => (key(b) - key(a)) || (b.total - a.total));
   teams.forEach((t, i) => {
-    t.rank = (i > 0 && t.total === teams[i - 1].total) ? teams[i - 1].rank : i + 1;
+    const same = i > 0 && key(t) === key(teams[i - 1]) && t.total === teams[i - 1].total;
+    t.rank = same ? teams[i - 1].rank : i + 1;
   });
   return teams;
 }
@@ -327,6 +336,7 @@ function renderOverlay() {
 
   app.innerHTML = `<div class="ov-stage">${wrapPanel(`<div class="ov-grid${state.textDark ? ' dark' : ''}" style="grid-template-columns:repeat(${cols},max-content);">${cells}</div>`)}</div>`;
   fitCardText();
+  uniformColumns();
   fitOverlay();
 }
 
@@ -352,7 +362,8 @@ function renderTeamOverlay(app) {
       <div class="ov-tcard-head">
         ${state.showRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}등</div>` : ''}
         <div class="ov-tcard-name">${esc(t.name)}</div>
-        <div class="ov-tcard-total">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>
+        ${t.round ? `<div class="ov-tcard-round">${esc(t.round)}</div>` : ''}
+        <div class="ov-tcard-total${t.round ? ' sub' : ''}">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>
       </div>
       <div class="ov-tcard-members" style="grid-template-columns:repeat(${memberCols},max-content);">${members}</div>
     </div>`;
@@ -360,18 +371,40 @@ function renderTeamOverlay(app) {
 
   app.innerHTML = `<div class="ov-stage">${wrapPanel(`<div class="ov-grid teams${state.textDark ? ' dark' : ''}" style="grid-template-columns:repeat(${cols},max-content);">${cells}</div>`)}</div>`;
   fitCardText();
+  uniformColumns();
   fitOverlay();
+}
+
+// 간격 균등화: content-fit으로 제각각인 칸 폭을 가장 넓은 칸 기준으로 통일
+// — 개인전 카드끼리 / 팀 카드끼리 / 모든 팀에 걸친 멤버 칸끼리
+function uniformColumns() {
+  const grid = document.querySelector('.ov-grid');
+  if (grid) {
+    let max = 0;
+    for (const c of grid.children) max = Math.max(max, c.offsetWidth);
+    const n = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+    if (max) grid.style.gridTemplateColumns = `repeat(${n}, ${Math.ceil(max)}px)`;
+  }
+  const memberCells = document.querySelectorAll('.ov-tm');
+  if (memberCells.length) {
+    let max = 0;
+    memberCells.forEach(el => { max = Math.max(max, el.offsetWidth); });
+    document.querySelectorAll('.ov-tcard-members').forEach(g => {
+      const n = getComputedStyle(g).gridTemplateColumns.split(' ').length;
+      if (max) g.style.gridTemplateColumns = `repeat(${n}, ${Math.ceil(max)}px)`;
+    });
+  }
 }
 
 // 칸을 넘치는 텍스트만 폰트 축소 (한 줄 유지, 한 번에 비율 계산)
 // 이름: 기준의 60%까지(그 이하는 말줄임) / 점수: 잘림 방지를 위해 들어맞을 때까지(절대 하한 8px)
 function fitCardText() {
-  document.querySelectorAll('.ov-card-name, .ov-card-score, .ov-tcard-name, .ov-tcard-total, .ov-tm-name, .ov-tm-score').forEach(el => {
+  document.querySelectorAll('.ov-card-name, .ov-card-score, .ov-tcard-name, .ov-tcard-total, .ov-tcard-round, .ov-tm-name, .ov-tm-score').forEach(el => {
     el.style.fontSize = '';
     if (el.scrollWidth <= el.clientWidth) return;
     const base = parseFloat(getComputedStyle(el).fontSize);
     const fit = base * el.clientWidth / el.scrollWidth * 0.97;
-    const isScore = el.classList.contains('ov-card-score') || el.classList.contains('ov-tcard-total') || el.classList.contains('ov-tm-score');
+    const isScore = el.classList.contains('ov-card-score') || el.classList.contains('ov-tcard-total') || el.classList.contains('ov-tcard-round') || el.classList.contains('ov-tm-score');
     el.style.fontSize = Math.max(fit, isScore ? 8 : base * 0.6) + 'px';
   });
 }
