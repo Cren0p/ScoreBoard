@@ -390,14 +390,14 @@ function uniformColumns() {
     const els = document.querySelectorAll(sel);
     if (els.length < 2) return;
     let max = 0;
-    els.forEach(el => { el.style.width = ''; max = Math.max(max, el.offsetWidth); });
+    els.forEach(el => { el.style.width = ''; max = Math.max(max, el.getBoundingClientRect().width); });
     els.forEach(el => { el.style.width = Math.ceil(max) + 'px'; });
   });
   // ② 모든 팀에 걸쳐 멤버 칸 폭 통일
   const memberCells = document.querySelectorAll('.ov-tm');
   if (memberCells.length) {
     let max = 0;
-    memberCells.forEach(el => { max = Math.max(max, el.offsetWidth); });
+    memberCells.forEach(el => { max = Math.max(max, el.getBoundingClientRect().width); });
     document.querySelectorAll('.ov-tcard-members').forEach(g => {
       const n = getComputedStyle(g).gridTemplateColumns.split(' ').length;
       if (max) g.style.gridTemplateColumns = `repeat(${n}, ${Math.ceil(max)}px)`;
@@ -409,7 +409,7 @@ function uniformColumns() {
     heads.forEach(h => h.classList.add('wide'));
     const fitsAll = heads.every(h => {
       const mg = h.parentElement.querySelector('.ov-tcard-members');
-      return mg && h.offsetWidth <= mg.offsetWidth;
+      return mg && h.getBoundingClientRect().width <= mg.getBoundingClientRect().width;
     });
     if (!fitsAll) heads.forEach(h => h.classList.remove('wide'));
   }
@@ -417,7 +417,7 @@ function uniformColumns() {
   const grid = document.querySelector('.ov-grid');
   if (grid) {
     let max = 0;
-    for (const c of grid.children) max = Math.max(max, c.offsetWidth);
+    for (const c of grid.children) max = Math.max(max, c.getBoundingClientRect().width);
     const n = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
     if (max) grid.style.gridTemplateColumns = `repeat(${n}, ${Math.ceil(max)}px)`;
   }
