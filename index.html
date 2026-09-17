@@ -77,16 +77,13 @@ body.ovm #app{background:transparent;}
 .ov-grid.teams{gap:6px 20px;}
 .ov-tcard-members{display:grid;gap:2px 14px;}
 .ov-card{background:transparent;padding:2px 4px;display:flex;align-items:center;gap:6px;}
-.ov-card-rank{min-width:2.3em;display:flex;align-items:center;justify-content:center;font-size:1.05rem;font-weight:900;flex-shrink:0;white-space:nowrap;}
-.ovr1{color:#FFD700;}
-.ovr2,.ovr3,.ovr-etc{color:rgba(255,255,255,.6);}
-.ov-panel.dark .ovr1{color:#B8860B;}
-.ov-panel.dark .ovr2,.ov-panel.dark .ovr3,.ov-panel.dark .ovr-etc{color:rgba(0,0,0,.55);}
 .ov-grid.dark .ov-card-score{color:#111;}
 .ov-tcard{background:transparent;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;}
-.ov-tcard-head{display:grid;grid-template-columns:repeat(2,max-content);justify-content:center;align-items:center;column-gap:8px;}
-.ov-tcard-head.single,.ov-tcard-head.wide{display:flex;justify-content:center;align-items:center;gap:6px;}
-.ov-tcard-head .ov-card-rank{font-size:1.25rem;}
+.ov-tcard-head{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 8px;}
+.ov-tcard-head.wide{flex-direction:row;gap:8px;}
+.ov-tcard-scores{display:flex;align-items:center;justify-content:center;gap:6px;}
+.top{outline:2px solid #FFD700;outline-offset:-2px;background:rgba(255,215,0,.16);}
+.ov-panel.dark .top{outline-color:#B8860B;background:rgba(184,134,11,.18);}
 .ov-tcard-name{font-size:1.25rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;max-width:130px;text-align:center;}
 .ov-grid.dark .ov-tcard-name{color:#111;}
 .ov-tcard-round{font-size:1.3rem;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;text-align:center;}
@@ -183,6 +180,7 @@ function sanitize(raw) {
     textDark: s.textDark === true,
     cols: (typeof s.cols === 'number' && s.cols >= 1 && s.cols <= 12) ? s.cols : 0,
     showRank: s.showRank !== false,
+    topN: (typeof s.topN === 'number' && s.topN >= 0 && s.topN <= 12) ? s.topN : 1,
     overlayOn: s.overlayOn !== false,
     teamCols: (typeof s.teamCols === 'number' && s.teamCols >= 1 && s.teamCols <= 12) ? s.teamCols : 0,
     caption: typeof s.caption === 'string' ? s.caption : '',
@@ -326,17 +324,11 @@ function renderOverlay() {
 
   const arr = ranked();
   const cols = Math.min(state.cols > 0 ? state.cols : 4, arr.length);
-  const allBlank = arr.every(p => p.score === '');
   const cells = arr.map(p => {
     const blank = p.score === '';
-    const rank = p.rank;
-    const rankCls = rank === 1 ? 'ovr1' : rank === 2 ? 'ovr2' : rank === 3 ? 'ovr3' : 'ovr-etc';
+    const top = state.showRank && !blank && p.rank <= state.topN;
     const nameColor = p.color || (state.textDark ? '#111' : '#fff');
-    const rankEl = !state.showRank ? '' :
-      blank ? (allBlank ? '' : `<div class="ov-card-rank" style="visibility:hidden;">1등</div>`) :
-      `<div class="ov-card-rank ${rankCls}">${rank}등</div>`;
-    return `<div class="ov-card">
-      ${rankEl}
+    return `<div class="ov-card${top ? ' top' : ''}">
       <img class="ov-card-av" src="${soopImg(p.id)}" alt="${esc(p.nick)}" onerror="this.style.opacity=0">
       <div class="ov-card-info">
         <div class="ov-card-name" style="color:${nameColor}">${esc(p.nick)}</div>
@@ -358,8 +350,8 @@ function renderTeamOverlay(app) {
   const cols = Math.min(state.teamCols > 0 ? state.teamCols : 4, teams.length);
   const teamsAllBlank = teams.every(t => t.allBlank && !t.round);
   const cells = teams.map(t => {
-    const rankCls = t.rank === 1 ? 'ovr1' : t.rank === 2 ? 'ovr2' : t.rank === 3 ? 'ovr3' : 'ovr-etc';
-    const showTeamRank = state.showRank && !teamsAllBlank && (t.round ? true : !t.allBlank);
+    const ranked = state.showRank && !teamsAllBlank && (t.round ? true : !t.allBlank);
+    const top = ranked && t.rank <= state.topN;
     const showTotal = !t.allBlank;
     const memberCols = Math.min(state.cols > 0 ? state.cols : 1, t.members.length);
     const members = t.members.map(m => {
@@ -373,11 +365,12 @@ function renderTeamOverlay(app) {
       </div>`;
     }).join('');
     return `<div class="ov-tcard">
-      <div class="ov-tcard-head${(showTeamRank && t.round && showTotal) ? '' : ' single'}">
-        ${showTeamRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}등</div>` : ''}
+      <div class="ov-tcard-head${top ? ' top' : ''}">
         <div class="ov-tcard-name">${esc(t.name)}</div>
-        ${t.round ? `<div class="ov-tcard-round">${esc(dispRound(t.round))}</div>` : ''}
-        ${showTotal ? `<div class="ov-tcard-total${t.round ? ' sub' : ''}">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>` : ''}
+        ${(t.round || showTotal) ? `<div class="ov-tcard-scores">
+          ${t.round ? `<div class="ov-tcard-round">${esc(dispRound(t.round))}</div>` : ''}
+          ${showTotal ? `<div class="ov-tcard-total${t.round ? ' sub' : ''}">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>` : ''}
+        </div>` : ''}
       </div>
       <div class="ov-tcard-members" style="grid-template-columns:repeat(${memberCols},max-content);">${members}</div>
     </div>`;
@@ -393,7 +386,7 @@ function renderTeamOverlay(app) {
 // — 개인전 카드끼리 / 팀 카드끼리 / 모든 팀에 걸친 멤버 칸끼리
 function uniformColumns() {
   // ① 팀 헤더의 등수·팀명·라운드·합계를 각 클래스별 최대 폭으로 통일 (팀 간 줄 맞춤)
-  ['.ov-tcard-head .ov-card-rank', '.ov-tcard-name', '.ov-tcard-round', '.ov-tcard-total'].forEach(sel => {
+  ['.ov-tcard-name', '.ov-tcard-round', '.ov-tcard-total'].forEach(sel => {
     const els = document.querySelectorAll(sel);
     if (els.length < 2) return;
     let max = 0;
@@ -411,7 +404,7 @@ function uniformColumns() {
     });
   }
   // ③ 헤더 단수 자동: 한 줄로 폈을 때 전 팀이 멤버 그리드 폭 안에 들어가면 한 줄, 아니면 2×2
-  const heads = Array.from(document.querySelectorAll('.ov-tcard-head:not(.single)'));
+  const heads = Array.from(document.querySelectorAll('.ov-tcard-head'));
   if (heads.length) {
     heads.forEach(h => h.classList.add('wide'));
     const fitsAll = heads.every(h => {
