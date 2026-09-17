@@ -84,14 +84,14 @@ body.ovm #app{background:transparent;}
 .ov-panel.dark .ovr2,.ov-panel.dark .ovr3,.ov-panel.dark .ovr-etc{color:rgba(0,0,0,.55);}
 .ov-grid.dark .ov-card-score{color:#111;}
 .ov-tcard{background:transparent;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;}
-.ov-tcard-head{display:flex;flex-direction:column;align-items:center;}
-.ov-tcard-head-row{display:flex;align-items:center;justify-content:center;gap:6px;}
+.ov-tcard-head{display:grid;grid-template-columns:repeat(2,max-content);justify-content:center;align-items:center;column-gap:8px;}
+.ov-tcard-head.single,.ov-tcard-head.wide{display:flex;justify-content:center;align-items:center;gap:6px;}
 .ov-tcard-head .ov-card-rank{font-size:1.25rem;}
 .ov-tcard-name{font-size:.95rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;max-width:130px;text-align:center;}
 .ov-grid.dark .ov-tcard-name{color:#111;}
-.ov-tcard-round{font-size:1.3rem;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;}
+.ov-tcard-round{font-size:1.3rem;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;text-align:center;}
 .ov-panel.dark .ov-tcard-round{color:#111;}
-.ov-tcard-total{font-size:1.3rem;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;}
+.ov-tcard-total{font-size:1.3rem;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;text-align:center;}
 .ov-tcard-total.sub{font-size:.85rem;font-weight:700;opacity:.7;}
 .ov-grid.dark .ov-tcard-total{color:#111;}
 .ov-tm{display:flex;align-items:center;gap:6px;}
@@ -363,15 +363,11 @@ function renderTeamOverlay(app) {
       </div>`;
     }).join('');
     return `<div class="ov-tcard">
-      <div class="ov-tcard-head">
-        <div class="ov-tcard-head-row">
-          ${state.showRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}등</div>` : ''}
-          <div class="ov-tcard-name">${esc(t.name)}</div>
-        </div>
-        <div class="ov-tcard-head-row">
-          ${t.round ? `<div class="ov-tcard-round">${esc(dispRound(t.round))}</div>` : ''}
-          <div class="ov-tcard-total${t.round ? ' sub' : ''}">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>
-        </div>
+      <div class="ov-tcard-head${(state.showRank && t.round) ? '' : ' single'}">
+        ${state.showRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}등</div>` : ''}
+        <div class="ov-tcard-name">${esc(t.name)}</div>
+        ${t.round ? `<div class="ov-tcard-round">${esc(dispRound(t.round))}</div>` : ''}
+        <div class="ov-tcard-total${t.round ? ' sub' : ''}">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>
       </div>
       <div class="ov-tcard-members" style="grid-template-columns:repeat(${memberCols},max-content);">${members}</div>
     </div>`;
@@ -386,14 +382,7 @@ function renderTeamOverlay(app) {
 // 간격 균등화: content-fit으로 제각각인 칸 폭을 가장 넓은 칸 기준으로 통일
 // — 개인전 카드끼리 / 팀 카드끼리 / 모든 팀에 걸친 멤버 칸끼리
 function uniformColumns() {
-  const grid = document.querySelector('.ov-grid');
-  if (grid) {
-    let max = 0;
-    for (const c of grid.children) max = Math.max(max, c.offsetWidth);
-    const n = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
-    if (max) grid.style.gridTemplateColumns = `repeat(${n}, ${Math.ceil(max)}px)`;
-  }
-  // 팀 헤더의 등수·팀명·라운드·합계를 각 클래스별 최대 폭으로 통일 (팀 간 줄 맞춤)
+  // ① 팀 헤더의 등수·팀명·라운드·합계를 각 클래스별 최대 폭으로 통일 (팀 간 줄 맞춤)
   ['.ov-tcard-head .ov-card-rank', '.ov-tcard-name', '.ov-tcard-round', '.ov-tcard-total'].forEach(sel => {
     const els = document.querySelectorAll(sel);
     if (els.length < 2) return;
@@ -401,6 +390,7 @@ function uniformColumns() {
     els.forEach(el => { el.style.width = ''; max = Math.max(max, el.offsetWidth); });
     els.forEach(el => { el.style.width = Math.ceil(max) + 'px'; });
   });
+  // ② 모든 팀에 걸쳐 멤버 칸 폭 통일
   const memberCells = document.querySelectorAll('.ov-tm');
   if (memberCells.length) {
     let max = 0;
@@ -409,6 +399,24 @@ function uniformColumns() {
       const n = getComputedStyle(g).gridTemplateColumns.split(' ').length;
       if (max) g.style.gridTemplateColumns = `repeat(${n}, ${Math.ceil(max)}px)`;
     });
+  }
+  // ③ 헤더 단수 자동: 한 줄로 폈을 때 전 팀이 멤버 그리드 폭 안에 들어가면 한 줄, 아니면 2×2
+  const heads = Array.from(document.querySelectorAll('.ov-tcard-head:not(.single)'));
+  if (heads.length) {
+    heads.forEach(h => h.classList.add('wide'));
+    const fitsAll = heads.every(h => {
+      const mg = h.parentElement.querySelector('.ov-tcard-members');
+      return mg && h.offsetWidth <= mg.offsetWidth;
+    });
+    if (!fitsAll) heads.forEach(h => h.classList.remove('wide'));
+  }
+  // ④ 개인전 카드끼리 / 팀 카드끼리 동일 폭
+  const grid = document.querySelector('.ov-grid');
+  if (grid) {
+    let max = 0;
+    for (const c of grid.children) max = Math.max(max, c.offsetWidth);
+    const n = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+    if (max) grid.style.gridTemplateColumns = `repeat(${n}, ${Math.ceil(max)}px)`;
   }
 }
 
