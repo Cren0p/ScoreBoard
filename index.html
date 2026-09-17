@@ -87,7 +87,7 @@ body.ovm #app{background:transparent;}
 .ov-tcard-head{display:grid;grid-template-columns:repeat(2,max-content);justify-content:center;align-items:center;column-gap:8px;}
 .ov-tcard-head.single,.ov-tcard-head.wide{display:flex;justify-content:center;align-items:center;gap:6px;}
 .ov-tcard-head .ov-card-rank{font-size:1.25rem;}
-.ov-tcard-name{font-size:.95rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;max-width:130px;text-align:center;}
+.ov-tcard-name{font-size:1.25rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;max-width:130px;text-align:center;}
 .ov-grid.dark .ov-tcard-name{color:#111;}
 .ov-tcard-round{font-size:1.3rem;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;text-align:center;}
 .ov-panel.dark .ov-tcard-round{color:#111;}
@@ -212,12 +212,13 @@ function rankedTeams() {
     byName[r.team].total += scoreNum(r.score);
     if (!byName[r.team].round && r.teamScore) byName[r.team].round = r.teamScore;
   });
+  teams.forEach(t => { t.allBlank = t.members.every(m => m.score === ''); });
   if (!state.showRank) return teams;
   teams.forEach(t => t.members.sort((a, b) => (scoreNum(b.score) - scoreNum(a.score)) || ((a.score === '') - (b.score === ''))));
   // 라운드 점수(J열)가 하나라도 있으면 라운드 우선, 동률이면 합계로 정렬
   const useRound = teams.some(t => t.round);
   const key = t => useRound ? scoreNum(t.round || '') : t.total;
-  teams.sort((a, b) => (key(b) - key(a)) || (b.total - a.total));
+  teams.sort((a, b) => (key(b) - key(a)) || (b.total - a.total) || ((a.allBlank ? 1 : 0) - (b.allBlank ? 1 : 0)));
   teams.forEach((t, i) => {
     const same = i > 0 && key(t) === key(teams[i - 1]) && t.total === teams[i - 1].total;
     t.rank = same ? teams[i - 1].rank : i + 1;
@@ -355,8 +356,11 @@ function renderTeamOverlay(app) {
   if (teams.length === 0) { app.innerHTML = ''; return; }
 
   const cols = Math.min(state.teamCols > 0 ? state.teamCols : 4, teams.length);
+  const teamsAllBlank = teams.every(t => t.allBlank && !t.round);
   const cells = teams.map(t => {
     const rankCls = t.rank === 1 ? 'ovr1' : t.rank === 2 ? 'ovr2' : t.rank === 3 ? 'ovr3' : 'ovr-etc';
+    const showTeamRank = state.showRank && !teamsAllBlank && (t.round ? true : !t.allBlank);
+    const showTotal = !t.allBlank;
     const memberCols = Math.min(state.cols > 0 ? state.cols : 1, t.members.length);
     const members = t.members.map(m => {
       const nameColor = m.color || (state.textDark ? '#111' : '#fff');
@@ -369,11 +373,11 @@ function renderTeamOverlay(app) {
       </div>`;
     }).join('');
     return `<div class="ov-tcard">
-      <div class="ov-tcard-head${(state.showRank && t.round) ? '' : ' single'}">
-        ${state.showRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}등</div>` : ''}
+      <div class="ov-tcard-head${(showTeamRank && t.round && showTotal) ? '' : ' single'}">
+        ${showTeamRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}등</div>` : ''}
         <div class="ov-tcard-name">${esc(t.name)}</div>
         ${t.round ? `<div class="ov-tcard-round">${esc(dispRound(t.round))}</div>` : ''}
-        <div class="ov-tcard-total${t.round ? ' sub' : ''}">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>
+        ${showTotal ? `<div class="ov-tcard-total${t.round ? ' sub' : ''}">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>` : ''}
       </div>
       <div class="ov-tcard-members" style="grid-template-columns:repeat(${memberCols},max-content);">${members}</div>
     </div>`;
