@@ -83,10 +83,11 @@ body.ovm #app{background:transparent;}
 .ov-panel.dark .ovr1{color:#B8860B;}
 .ov-panel.dark .ovr2,.ov-panel.dark .ovr3,.ov-panel.dark .ovr-etc{color:rgba(0,0,0,.55);}
 .ov-grid.dark .ov-card-score{color:#111;}
-.ov-tcard{background:transparent;padding:2px 4px;display:flex;flex-direction:column;gap:2px;}
-.ov-tcard-head{display:flex;align-items:center;gap:6px;}
+.ov-tcard{background:transparent;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.ov-tcard-head{display:flex;flex-direction:column;align-items:center;}
+.ov-tcard-head-row{display:flex;align-items:center;justify-content:center;gap:6px;}
 .ov-tcard-head .ov-card-rank{font-size:1.25rem;}
-.ov-tcard-name{font-size:.95rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;max-width:130px;}
+.ov-tcard-name{font-size:.95rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;max-width:130px;text-align:center;}
 .ov-grid.dark .ov-tcard-name{color:#111;}
 .ov-tcard-round{font-size:1.3rem;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;max-width:110px;font-variant-numeric:tabular-nums;}
 .ov-panel.dark .ov-tcard-round{color:#111;}
@@ -152,11 +153,13 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 
 function soopImg(id) { return `https://profile.img.sooplive.com/LOGO/${id.slice(0,2)}/${id}/${id}.jpg`; }
 
-// D1 단위: 점수가 순수 숫자(콤마·소수점·부호 허용)면 단위를 붙이고, 텍스트 섞인 점수는 그대로
-function dispScore(t) {
+// 단위 규칙: 값이 순수 숫자(콤마·소수점·부호 허용)면 단위를 붙이고, 텍스트 섞인 값은 그대로
+function withUnit(t, unit) {
   const s = String(t);
-  return (state.unit && /^-?[0-9][0-9,]*(\.[0-9]+)?$/.test(s.trim())) ? s + state.unit : s;
+  return (unit && /^-?[0-9][0-9,]*(\.[0-9]+)?$/.test(s.trim())) ? s + unit : s;
 }
+function dispScore(t) { return withUnit(t, state.unit); }         // D1: 게임 점수 단위
+function dispRound(t) { return withUnit(t, state.roundUnit); }    // J1: 라운드 점수 단위
 
 // D열 셀 텍스트("12,500원", "$300", "85%")에서 정렬용 숫자 추출
 function scoreNum(t) {
@@ -184,6 +187,7 @@ function sanitize(raw) {
     teamCols: (typeof s.teamCols === 'number' && s.teamCols >= 1 && s.teamCols <= 12) ? s.teamCols : 0,
     caption: typeof s.caption === 'string' ? s.caption : '',
     unit: typeof s.unit === 'string' ? s.unit.trim() : '',
+    roundUnit: typeof s.roundUnit === 'string' ? s.roundUnit.trim() : '',
     captionPos: ['top', 'left', 'right', 'bottom'].indexOf(s.captionPos) !== -1 ? s.captionPos : 'top',
     updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : 0,
   };
@@ -360,10 +364,14 @@ function renderTeamOverlay(app) {
     }).join('');
     return `<div class="ov-tcard">
       <div class="ov-tcard-head">
-        ${state.showRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}등</div>` : ''}
-        <div class="ov-tcard-name">${esc(t.name)}</div>
-        ${t.round ? `<div class="ov-tcard-round">${esc(t.round)}</div>` : ''}
-        <div class="ov-tcard-total${t.round ? ' sub' : ''}">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>
+        <div class="ov-tcard-head-row">
+          ${state.showRank ? `<div class="ov-card-rank ${rankCls}">${t.rank}등</div>` : ''}
+          <div class="ov-tcard-name">${esc(t.name)}</div>
+        </div>
+        <div class="ov-tcard-head-row">
+          ${t.round ? `<div class="ov-tcard-round">${esc(dispRound(t.round))}</div>` : ''}
+          <div class="ov-tcard-total${t.round ? ' sub' : ''}">${esc(dispScore(t.total.toLocaleString('en-US')))}</div>
+        </div>
       </div>
       <div class="ov-tcard-members" style="grid-template-columns:repeat(${memberCols},max-content);">${members}</div>
     </div>`;
@@ -385,6 +393,14 @@ function uniformColumns() {
     const n = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
     if (max) grid.style.gridTemplateColumns = `repeat(${n}, ${Math.ceil(max)}px)`;
   }
+  // 팀 헤더의 등수·팀명·라운드·합계를 각 클래스별 최대 폭으로 통일 (팀 간 줄 맞춤)
+  ['.ov-tcard-head .ov-card-rank', '.ov-tcard-name', '.ov-tcard-round', '.ov-tcard-total'].forEach(sel => {
+    const els = document.querySelectorAll(sel);
+    if (els.length < 2) return;
+    let max = 0;
+    els.forEach(el => { el.style.width = ''; max = Math.max(max, el.offsetWidth); });
+    els.forEach(el => { el.style.width = Math.ceil(max) + 'px'; });
+  });
   const memberCells = document.querySelectorAll('.ov-tm');
   if (memberCells.length) {
     let max = 0;
